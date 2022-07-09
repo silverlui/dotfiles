@@ -1,8 +1,18 @@
 local install_path = vim.fn.stdpath 'data' .. '/site/pack/packer/start/packer.nvim'
+local keymap = vim.api.nvim_set_keymap
+local default_opts = { noremap = true, silent = true }
 
 if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
   vim.fn.execute('!git clone https://github.com/wbthomason/packer.nvim ' .. install_path)
 end
+
+vim.cmd([[
+inoremap <silent><expr> <TAB>
+      \ pumvisible() ? "\<C-n>" :
+      \ CheckBackspace() ? "\<TAB>" :
+      \ coc#refresh()
+inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+]])
 
 local packer_group = vim.api.nvim_create_augroup("Packer", { clear = true })
 vim.api.nvim_create_autocmd("BufWritePost", { command = "PackerCompile", group = "Packer", pattern = "init.lua"})
@@ -13,7 +23,6 @@ require('packer').startup(function()
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'numToStr/Comment.nvim'
-  use 'tpope/vim-surround'
   use 'tpope/vim-repeat'
   use 'tpope/vim-sleuth'
   use 'justinmk/vim-dirvish'
@@ -29,44 +38,56 @@ require('packer').startup(function()
   -- Add git related info in the signs columns and popups
   use { 'lewis6991/gitsigns.nvim', requires = { 'nvim-lua/plenary.nvim' } }
   -- Highlight, edit, and navigate code using a fast incremental parsing library
-  use 'nvim-treesitter/nvim-treesitter'
-  -- Additional textobjects for treesitter
-  use 'nvim-treesitter/nvim-treesitter-textobjects'
   use 'neovim/nvim-lspconfig'
-  use 'mjlbach/onedark.nvim'
   use 'bfredl/nvim-luadev'
-  use 'kristijanhusak/orgmode.nvim'
   use 'mhartington/formatter.nvim'
   use 'ziglang/zig.vim'
-  use 'windwp/nvim-autopairs'  
+  use 'windwp/nvim-autopairs'
   use 'ggandor/lightspeed.nvim'
-  use "projekt0n/github-nvim-theme"
   use {'neoclide/coc.nvim', branch = 'release'}
+  use 'nvim-treesitter/nvim-treesitter'
+  use 'ful1e5/onedark.nvim'
 end)
 
+require('onedark').setup()
+
+local o = vim.o
+
+o.expandtab = true
+o.smartindent = true
+o.tabstop = 2
+o.shiftwidth = 2
+
+require'nvim-treesitter.configs'.setup {
+  -- A list of parser names, or "all"
+  ensure_installed = { "lua", "css", "javascript", "html", "typescript", "json"},
+
+  -- Install parsers synchronously (only applied to `ensure_installed`)
+  sync_install = false,
+
+  highlight = {
+    -- `false` will disable the whole extension
+    enable = true,
+
+    -- NOTE: these are the names of the parsers and not the filetype. (for example if you want to
+    -- disable highlighting for the `tex` filetype, you need to include `latex` in this list as this is
+    -- the name of the parser)
+    -- list of language that will be disabled
+    disable = { "c", "rust" },
+
+    -- Setting this to true will run `:h syntax` and tree-sitter at the same time.
+    -- Set this to `true` if you depend on 'syntax' being enabled (like for indentation).
+    -- Using this option may slow down your editor, and you may see some duplicate highlights.
+    -- Instead of true it can also be a list of languages
+    additional_vim_regex_highlighting = false,
+  },
+}
+
+-- Better escape using jk in insert and terminal mode
+keymap("i", "jk", "<ESC>", default_opts)
+keymap("t", "jk", "<C-\\><C-n>", default_opts)
+
 require('nvim-autopairs').setup{} -- Add this line
-
--- Example config in Lua
-require("github-theme").setup({
-  theme_style = "dark_default",
-  function_style = "italic",
-  sidebars = {"qf", "vista_kind", "terminal", "packer"},
-
-  -- Change the "hint" color to the "orange" color, and make the "error" color bright red
-  colors = {hint = "orange", error = "#ff0000"},
-
-  -- Overwrite the highlight groups
-  overrides = function(c)
-    return {
-      htmlTag = {fg = c.red, bg = "#282c34", sp = c.hint, style = "underline"},
-      DiagnosticHint = {link = "LspDiagnosticsDefaultHint"},
-      -- this will remove the highlight groups
-      TSField = {},
-    }
-  end
-})
-
-
 
 --Set highlight on search
 vim.o.hlsearch = false
@@ -105,7 +126,7 @@ vim.api.nvim_create_autocmd("FileType", { command = "setlocal spell", group = "S
 require('lualine').setup {
   options = {
     icons_enabled = false,
-    theme = onedark,
+    theme = 'onedark-nvim',
     component_separators = '|',
     section_separators = '',
   },
@@ -113,9 +134,6 @@ require('lualine').setup {
     lualine_a = { 'mode' },
     lualine_b = { 'filename' },
     -- lualine_c = { 'lsp_progress' },
-    lualine_c = {function()
-      return require'nvim-treesitter'.statusline(40) 
-    end},
     lualine_x = { 'filetype' },
     lualine_y = { 'progress' },
     lualine_z = { 'location' },
@@ -432,8 +450,6 @@ local handlers = {
 }
 
 local servers = {
-  'clangd',
-  'ltex',
   'pyright',
   'yamlls',
   'jsonls',
@@ -480,13 +496,6 @@ require('formatter').setup {
   },
 }
 
-require('orgmode').setup_ts_grammar()
-
-require('orgmode').setup {
-  org_agenda_files = { '~/Nextcloud/org/*' },
-  org_default_notes_file = '~/Nextcloud/org/refile.org',
-}
-
 vim.keymap.set('n', '<leader>os', function()
   require('telescope.builtin').live_grep { search_dirs = { '$HOME/Nextcloud/org' } }
 end)
@@ -494,57 +503,3 @@ end)
 vim.keymap.set('n', '<leader>of', function()
   require('telescope.builtin').find_files { search_dirs = { '$HOME/Nextcloud/org' } }
 end)
-
--- Treesitter configuration
--- Parsers must be installed manually via :TSInstall
-require('nvim-treesitter.configs').setup {
-  highlight = {
-    enable = true, -- false will disable the whole extension
-    additional_vim_regex_highlighting = { 'org' }, -- Required since TS highlighter doesn't support all syntax features (conceal)
-  },
-  incremental_selection = {
-    enable = true,
-    keymaps = {
-      init_selection = 'gnn',
-      node_incremental = 'grn',
-      scope_incremental = 'grc',
-      node_decremental = 'grm',
-    },
-  },
-  indent = {
-    enable = true,
-  },
-  textobjects = {
-    select = {
-      enable = true,
-      lookahead = true, -- Automatically jump forward to textobj, similar to targets.vim
-      keymaps = {
-        -- You can use the capture groups defined in textobjects.scm
-        ['af'] = '@function.outer',
-        ['if'] = '@function.inner',
-        ['ac'] = '@class.outer',
-        ['ic'] = '@class.inner',
-      },
-    },
-    move = {
-      enable = true,
-      set_jumps = true, -- whether to set jumps in the jumplist
-      goto_next_start = {
-        [']m'] = '@function.outer',
-        [']]'] = '@class.outer',
-      },
-      goto_next_end = {
-        [']M'] = '@function.outer',
-        [']['] = '@class.outer',
-      },
-      goto_previous_start = {
-        ['[m'] = '@function.outer',
-        ['[['] = '@class.outer',
-      },
-      goto_previous_end = {
-        ['[M'] = '@function.outer',
-        ['[]'] = '@class.outer',
-      },
-    },
-  },
-}
