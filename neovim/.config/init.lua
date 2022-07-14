@@ -6,16 +6,10 @@ if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
   vim.fn.execute('!git clone https://github.com/wbthomason/packer.nvim ' .. install_path)
 end
 
-vim.cmd([[
-inoremap <silent><expr> <TAB>
-      \ pumvisible() ? "\<C-n>" :
-      \ CheckBackspace() ? "\<TAB>" :
-      \ coc#refresh()
-inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
-]])
-
 local packer_group = vim.api.nvim_create_augroup("Packer", { clear = true })
 vim.api.nvim_create_autocmd("BufWritePost", { command = "PackerCompile", group = "Packer", pattern = "init.lua"})
+
+vim.wo.relativenumber = true
 
 local use = require('packer').use
 require('packer').startup(function()
@@ -25,31 +19,99 @@ require('packer').startup(function()
   use 'numToStr/Comment.nvim'
   use 'tpope/vim-repeat'
   use 'tpope/vim-sleuth'
-  use 'justinmk/vim-dirvish'
-  use 'christoomey/vim-tmux-navigator'
   -- UI to select things (files, grep results, open buffers...)
   use { 'nvim-telescope/telescope.nvim', requires = { 'nvim-lua/plenary.nvim' } }
   use { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make' }
   use 'nvim-lualine/lualine.nvim'
-  -- use 'arkav/lualine-lsp-progress'
-  use 'j-hui/fidget.nvim'
   -- Add indentation guides even on blank lines
   use 'lukas-reineke/indent-blankline.nvim'
-  -- Add git related info in the signs columns and popups
-  use { 'lewis6991/gitsigns.nvim', requires = { 'nvim-lua/plenary.nvim' } }
   -- Highlight, edit, and navigate code using a fast incremental parsing library
   use 'neovim/nvim-lspconfig'
-  use 'bfredl/nvim-luadev'
-  use 'mhartington/formatter.nvim'
-  use 'ziglang/zig.vim'
-  use 'windwp/nvim-autopairs'
   use 'ggandor/lightspeed.nvim'
   use {'neoclide/coc.nvim', branch = 'release'}
   use 'nvim-treesitter/nvim-treesitter'
-  use 'ful1e5/onedark.nvim'
+  use 'Shatur/neovim-ayu'
+  use {'kyazdani42/nvim-tree.lua', requires = {'kyazdani42/nvim-web-devicons'}}
+  
+  use({
+    "kylechui/nvim-surround",
+    config = function()
+      require("nvim-surround").setup({
+        keymaps = { -- vim-surround style keymaps
+            insert = "ys",
+            insert_line = "yss",
+            visual = "S",
+            delete = "ds",
+            change = "cs",
+        },
+        delimiters = {
+            pairs = {
+                ["("] = { "( ", " )" },
+                [")"] = { "(", ")" },
+                ["{"] = { "{ ", " }" },
+                ["}"] = { "{", "}" },
+                ["<"] = { "< ", " >" },
+                [">"] = { "<", ">" },
+                ["["] = { "[ ", " ]" },
+                ["]"] = { "[", "]" },
+                -- Define pairs based on function evaluations!
+                ["i"] = function()
+                    return {
+                        require("nvim-surround.utils").get_input(
+                            "Enter the left delimiter: "
+                        ),
+                        require("nvim-surround.utils").get_input(
+                            "Enter the right delimiter: "
+                        )
+                    }
+                end,
+                ["f"] = function()
+                    return {
+                        require("nvim-surround.utils").get_input(
+                            "Enter the function name: "
+                        ) .. "(",
+                        ")"
+                    }
+                end,
+            },
+            separators = {
+                ["'"] = { "'", "'" },
+                ['"'] = { '"', '"' },
+                ["`"] = { "`", "`" },
+            },
+            HTML = {
+                ["t"] = "type", -- Change just the tag type
+                ["T"] = "whole", -- Change the whole tag contents
+            },
+            aliases = {
+                ["a"] = ">", -- Single character aliases apply everywhere
+                ["b"] = ")",
+                ["B"] = "}",
+                ["r"] = "]",
+                -- Table aliases only apply for changes/deletions
+                ["q"] = { '"', "'", "`" }, -- Any quote character
+                ["s"] = { ")", "]", "}", ">", "'", '"', "`" }, -- Any surrounding delimiter
+            },
+        },
+        highlight_motion = { -- Highlight before inserting/changing surrounds
+            duration = 0,
+        }
+    })
+    end
+  })
+  use {
+	"windwp/nvim-autopairs",
+    config = function() require("nvim-autopairs").setup {} end
+  }
 end)
 
-require('onedark').setup()
+-- require('ayu').colorscheme()
+vim.cmd "colorscheme industry"
+
+require('ayu').setup({
+    mirage = false, -- Set to `true` to use `mirage` variant instead of `dark` for dark background.
+    overrides = {}, -- A dictionary of group names, each associated with a dictionary of parameters (`bg`, `fg`, `sp` and `style`) and colors in hex.
+})
 
 local o = vim.o
 
@@ -87,7 +149,6 @@ require'nvim-treesitter.configs'.setup {
 keymap("i", "jk", "<ESC>", default_opts)
 keymap("t", "jk", "<C-\\><C-n>", default_opts)
 
-require('nvim-autopairs').setup{} -- Add this line
 
 --Set highlight on search
 vim.o.hlsearch = false
@@ -110,7 +171,7 @@ vim.o.smartcase = true
 
 --Decrease update time
 vim.o.updatetime = 250
-vim.wo.signcolumn = 'yes'
+-- vim.wo.signcolumn = 'yes'
 
 --Set colorscheme
 vim.o.termguicolors = true
@@ -123,23 +184,23 @@ local spell_group = vim.api.nvim_create_augroup("Spellcheck", { clear = true })
 vim.api.nvim_create_autocmd("FileType", { command = "setlocal spell", group = "Spellcheck", pattern = {"gitcommit", "markdown"}})
 
 --Set statusbar
-require('lualine').setup {
-  options = {
-    icons_enabled = false,
-    theme = 'onedark-nvim',
-    component_separators = '|',
-    section_separators = '',
-  },
-  sections = {
-    lualine_a = { 'mode' },
-    lualine_b = { 'filename' },
-    -- lualine_c = { 'lsp_progress' },
-    lualine_x = { 'filetype' },
-    lualine_y = { 'progress' },
-    lualine_z = { 'location' },
-
-  },
-}
+-- require('lualine').setup {
+--   options = {
+--     icons_enabled = true,
+--     theme = 'powerline_dark',
+--     component_separators = '|',
+--     section_separators = '',
+--   },
+--   sections = {
+--     lualine_a = { 'mode' },
+--     lualine_b = { 'filename' },
+--     -- lualine_c = { 'lsp_progress' },
+--     lualine_x = { 'filetype' },
+--     lualine_y = { 'progress' },
+--     lualine_z = { 'location' },
+--
+--   },
+-- }
 
 -- Enable commentary.nvim
 require('Comment').setup()
@@ -193,21 +254,6 @@ ToggleMouse = function()
 end
 
 vim.keymap.set('n', '<leader>bm', ToggleMouse)
-
--- Gitsigns
-require('gitsigns').setup {
-  signs = {
-    add = { text = '+' },
-    change = { text = '~' },
-    delete = { text = '_' },
-    topdelete = { text = '‾' },
-    changedelete = { text = '~' },
-  },
-  on_attach = function(bufnr)
-    vim.keymap.set('n', '[c', require"gitsigns".prev_hunk, {buffer=bufnr})
-    vim.keymap.set('n', ']c', require"gitsigns".next_hunk, {buffer=bufnr})
-  end
-}
 
 -- Telescope
 require('telescope').setup {
@@ -351,48 +397,10 @@ vim.g.netrw_winsize = -28
 -- do not display info on the top of window
 vim.g.netrw_banner = 0
 
--- sort is affecting only: directories on the top, files below
--- vim.g.netrw_sort_sequence = '[\/]$,*'
 
--- variable for use by ToggleNetrw function
-vim.g.NetrwIsOpen = 0
-
--- Lexplore toggle function
-ToggleNetrw = function()
-  if vim.g.NetrwIsOpen == 1 then
-    for _, i in pairs(vim.api.nvim_list_bufs()) do
-      if vim.bo[i].filetype == 'netrw' then
-        vim.api.nvim_buf_delete(i)
-        break
-      end
-    end
-    vim.g.NetrwIsOpen = 0
-    vim.g.netrw_liststyle = 0
-    vim.g.netrw_chgwin = -1
-  else
-    vim.g.NetrwIsOpen = 1
-    vim.g.netrw_liststyle = 3
-    vim.cmd [[silent Lexplore]]
-  end
-end
-
+require("nvim-tree").setup()
 -- Toggle Nerd Tree SideBar
-vim.keymap.set('n', '<C-n>', ToggleNetrw)
-
--- Function to open preview of file under netrw
-local netrw_group = vim.api.nvim_create_augroup("Netrw", { clear = true })
-vim.api.nvim_create_autocmd("FileType", { command = "nmap <leader>; <cr>:wincmd W<cr>", group = "Netrw", pattern = "netrw"})
-
-local luadev_group = vim.api.nvim_create_augroup("luadev", { clear = true })
-vim.api.nvim_create_autocmd("BufEnter", { callback = function()
-  vim.cmd [[
-    nmap <buffer> <C-c><C-c> <Plug>(Luadev-RunLine)
-    vmap <buffer> <C-c><C-c> <Plug>(Luadev-Run)
-    nmap <buffer> <C-c><C-k> <Plug>(Luadev-RunWord)
-    map  <buffer> <C-x><C-p> <Plug>(Luadev-Complete)
-    set filetype=lua
-  ]]
-end, group = "luadev", pattern = "\\[nvim-lua\\]"})
+vim.keymap.set('n', '<C-n>', ':NvimTreeToggle<CR>')
 
 -- Diagnostic settings
 vim.diagnostic.config {
@@ -408,9 +416,6 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 vim.keymap.set('n', '<leader>Q', vim.diagnostic.setqflist)
 
 -- LSP settings
-
--- Enable fidget for lsp progress
-require('fidget').setup()
 
 -- log file location: $HOME/.cache/nvim/lsp.log
 -- vim.lsp.set_log_level 'debug'
@@ -466,35 +471,6 @@ for _, lsp in pairs(servers) do
     }
   }
 end
-
-require('formatter').setup {
-  filetype = {
-    python = {
-      -- Configuration for psf/black
-      function()
-        return {
-          exe = 'black', -- this should be available on your $PATH
-          args = { '-' },
-          stdin = true,
-        }
-      end,
-    },
-    lua = {
-      function()
-        return {
-          exe = 'stylua',
-          args = {
-            -- "--config-path "
-            --   .. os.getenv("XDG_CONFIG_HOME")
-            --   .. "/stylua/stylua.toml",
-            '-',
-          },
-          stdin = true,
-        }
-      end,
-    },
-  },
-}
 
 vim.keymap.set('n', '<leader>os', function()
   require('telescope.builtin').live_grep { search_dirs = { '$HOME/Nextcloud/org' } }
